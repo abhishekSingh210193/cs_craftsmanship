@@ -7,7 +7,7 @@
 # https://learnxinyminutes.com/docs/yaml/
 
 title: Computer Science Craftmanship
-description: An easy to use blogging platform with support for Jupyter Notebooks.
+description: Computer Science Blog.
 github_username: abhishekSingh210193
 # you can comment the below line out if your repo name is not different than your baseurl
 github_repo: "cs_craftmanship"
