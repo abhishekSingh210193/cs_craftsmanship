@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="twitter:card" content="summary_large_image" /><!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Data structures for fast infinte batching or streaming requests processing | Computer Science Craftmanship</title>
+<meta name="generator" content="Jekyll v4.1.1" />
+<meta property="og:title" content="Data structures for fast infinte batching or streaming requests processing" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Here we dicuss one of the coolest use of a data structures to address one of the very natural use case scenario of a server processing streaming requests from clients in order.Usually processing these requests involve a pipeline of operations applied based on request and multiple threads are in charge of dealing with these satges of pipeline. The requests gets accessed by these threads and the threads performing operations in the later part of the pipeline will have to wait for the earlier threads to finish their execution." />
+<meta property="og:description" content="Here we dicuss one of the coolest use of a data structures to address one of the very natural use case scenario of a server processing streaming requests from clients in order.Usually processing these requests involve a pipeline of operations applied based on request and multiple threads are in charge of dealing with these satges of pipeline. The requests gets accessed by these threads and the threads performing operations in the later part of the pipeline will have to wait for the earlier threads to finish their execution." />
+<link rel="canonical" href="https://abhisheksingh210193.github.io/cs_craftmanship/2021/01/04/Lock-free-data-structures.html" />
+<meta property="og:url" content="https://abhisheksingh210193.github.io/cs_craftmanship/2021/01/04/Lock-free-data-structures.html" />
+<meta property="og:site_name" content="Computer Science Craftmanship" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2021-01-04T00:00:00-06:00" />
+<script type="application/ld+json">
+{"description":"Here we dicuss one of the coolest use of a data structures to address one of the very natural use case scenario of a server processing streaming requests from clients in order.Usually processing these requests involve a pipeline of operations applied based on request and multiple threads are in charge of dealing with these satges of pipeline. The requests gets accessed by these threads and the threads performing operations in the later part of the pipeline will have to wait for the earlier threads to finish their execution.","url":"https://abhisheksingh210193.github.io/cs_craftmanship/2021/01/04/Lock-free-data-structures.html","@type":"BlogPosting","headline":"Data structures for fast infinte batching or streaming requests processing","dateModified":"2021-01-04T00:00:00-06:00","datePublished":"2021-01-04T00:00:00-06:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://abhisheksingh210193.github.io/cs_craftmanship/2021/01/04/Lock-free-data-structures.html"},"@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/cs_craftmanship/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="https://abhisheksingh210193.github.io/cs_craftmanship/feed.xml" title="Computer Science Craftmanship" /><link rel="shortcut icon" type="image/x-icon" href="/cs_craftmanship/images/favicon.ico"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Primer/15.2.0/primer.css" integrity="sha512-xTz2ys4coGAOz8vuV1NcQBkgVmKhsSEtjbqyMJbBHRplFuvKIUo6xhLHpAyPt9mfR6twHJgn9OgVLuqOvjeBhg==" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" integrity="sha512-1PKOgIY59xJ8Co8+NE6FZ+LOAZKjy+KY8iq0G4B3CyeY6wYHN3yt9PW0XpSriVlkMXe40PTKnXrLnZ9+fkDaog==" crossorigin="anonymous" />
+
+<script>
+function wrap_img(fn) {
+    if (document.attachEvent ? document.readyState === "complete" : document.readyState !== "loading") {
+        var elements = document.querySelectorAll(".post img");
+        Array.prototype.forEach.call(elements, function(el, i) {
+            if (el.getAttribute("title") && (el.className != "emoji")) {
+                const caption = document.createElement('figcaption');
+                var node = document.createTextNode(el.getAttribute("title"));
+                caption.appendChild(node);
+                const wrapper = document.createElement('figure');
+                wrapper.className = 'image';
+                el.parentNode.insertBefore(wrapper, el);
+                el.parentNode.removeChild(el);
+                wrapper.appendChild(el);
+                wrapper.appendChild(caption);
+            }
+        });
+    } else { document.addEventListener('DOMContentLoaded', fn); }
+}
+window.onload = wrap_img;
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function(){
+    // add link icon to anchor tags
+    var elem = document.querySelectorAll(".anchor-link")
+    elem.forEach(e => (e.innerHTML = '<i class="fas fa-link fa-xs"></i>'));
+    });
+</script>
+</head>
+<body><header class="site-header">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/cs_craftmanship/">Computer Science Craftmanship</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/cs_craftmanship/about/">About Me</a><a class="page-link" href="/cs_craftmanship/search/">Search</a><a class="page-link" href="/cs_craftmanship/categories/">Tags</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Data structures for fast infinte batching or streaming requests processing</h1><p class="page-description">Here we dicuss one of the coolest use of a data structures to address one of the very natural use case scenario of a server processing streaming requests from clients in order.Usually processing these requests involve a pipeline of operations applied based on request and multiple threads are in charge of dealing with these satges of pipeline. The requests gets accessed by these threads and the threads performing operations in the later part of the pipeline will have to wait for the earlier threads to finish their execution.</p><p class="post-meta post-meta-title"><time class="dt-published" datetime="2021-01-04T00:00:00-06:00" itemprop="datePublished">
+        Jan 4, 2021
+      </time>
+       • <span class="read-time" title="Estimated read time">
+    
+    
+      8 min read
+    
+</span></p>
+
+    
+
+    
+      
+        <div class="pb-5 d-flex flex-wrap flex-justify-end">
+          <div class="px-2">
+
+    <a href="https://github.com/abhishekSingh210193/cs_craftmanship/tree/master/_notebooks/2021-01-04-Lock-free-data-structures.ipynb" role="button" target="_blank">
+<img class="notebook-badge-image" src="/cs_craftmanship/assets/badges/github.svg" alt="View On GitHub">
+    </a>
+</div>
+
+          <div class="px-2">
+    <a href="https://mybinder.org/v2/gh/abhishekSingh210193/cs_craftmanship/master?filepath=_notebooks%2F2021-01-04-Lock-free-data-structures.ipynb" target="_blank">
+        <img class="notebook-badge-image" src="/cs_craftmanship/assets/badges/binder.svg" alt="Open In Binder"/>
+    </a>
+</div>
+
+          <div class="px-2">
+    <a href="https://colab.research.google.com/github/abhishekSingh210193/cs_craftmanship/blob/master/_notebooks/2021-01-04-Lock-free-data-structures.ipynb" target="_blank">
+        <img class="notebook-badge-image" src="/cs_craftmanship/assets/badges/colab.svg" alt="Open In Colab"/>
+    </a>
+</div>
+        </div>
+      </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <!--
+#################################################
+### THIS FILE WAS AUTOGENERATED! DO NOT EDIT! ###
+#################################################
+# file to edit: _notebooks/2021-01-04-Lock-free-data-structures.ipynb
+-->
+
+<div class="container" id="notebook-container">
+        
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><div class="flash">
+    <svg class="octicon octicon-info octicon octicon-info octicon octicon-info" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm6.5-.25A.75.75 0 017.25 7h1a.75.75 0 01.75.75v2.75h.25a.75.75 0 010 1.5h-2a.75.75 0 010-1.5h.25v-2h-.25a.75.75 0 01-.75-.75zM8 6a1 1 0 100-2 1 1 0 000 2z"></path></svg>
+    <strong>Note: </strong>In this blog we will discuss a "lock-free" circular queue data structure called disruptor. It was designed to be an efficient concurrent message passing datastructure.The official implementations and other discussions are available <a href="https://lmax-exchange.github.io/disruptor/#_discussion_blogs_other_useful_links">here</a>. This blog intends to summarise its use case and show the points where the design of the disruptor scores big.
+</div></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="LOCKS-ARE-BAD">LOCKS ARE BAD<a class="anchor-link" href="#LOCKS-ARE-BAD"> </a></h1><p>Whenever we have a scenario where mutliple concurrent running threads contend on a shared data structure and you need to ensure visibility of changes (i.e. a consumer thread can only get its hand over the data after the producer has processed it and put it for further processing). The usual and most common way to ensure these two requirements is to use a lock.
+Locks need the operating system to arbitrate which thread has the responsibility on a shared piece of data. The operating system might schedule other processes and the software's thread may be waiting in a queue. Moreover, if other threads get scheduled by the CPU then the cache memory of the softwares's thread will be overwritten and when it finally gets access to the CPU, it may have to go as far as the main memory to get it's required data. All this adds a lot of overhead and is evident by the simple experiment of incrementing a single shared variable. In the experiment below we increment a shared variable in three different ways. In the first case, we have a single process incrementing the variable, in the second case we again have two threads, but they synchronize their way through the operation using locks.
+In the third case, we have two threads which increment the variables and they synchronize their operation using atomic locks.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="SINGLE-PROCESS-INCREMENTING-A-SINGLE-VARIABLE">SINGLE PROCESS INCREMENTING A SINGLE VARIABLE<a class="anchor-link" href="#SINGLE-PROCESS-INCREMENTING-A-SINGLE-VARIABLE"> </a></h2>
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">time</span> 
+<span class="k">def</span> <span class="nf">single_thread</span><span class="p">():</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500000000</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">end</span><span class="o">-</span><span class="n">start</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">single_thread</span><span class="p">())</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+<div class="output_area">
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>28.66362190246582
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+    
+
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">SingleThreadedCounter</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">def</span> <span class="nf">increment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="TWO-PROCESS-INCREMENTING-A-SINGLE-VARIABLE">TWO PROCESS INCREMENTING A SINGLE VARIABLE<a class="anchor-link" href="#TWO-PROCESS-INCREMENTING-A-SINGLE-VARIABLE"> </a></h2>
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span>
+<span class="n">mutex</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">def</span> <span class="nf">thread_fcn</span><span class="p">():</span>
+    <span class="k">global</span> <span class="n">x</span>
+    <span class="n">mutex</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">250000000</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">mutex_increment</span><span class="p">():</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">t1</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">thread_fcn</span><span class="p">)</span>
+    <span class="n">t2</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">thread_fcn</span><span class="p">)</span>
+    
+    <span class="n">t1</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="n">t2</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    
+    <span class="n">t1</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+    <span class="n">t2</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+    
+    <span class="n">end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">end</span><span class="o">-</span><span class="n">start</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mutex_increment</span><span class="p">())</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+<div class="output_area">
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>36.418396949768066
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><div class="flash">
+    <svg class="octicon octicon-info octicon octicon-info octicon octicon-info octicon octicon-info" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm6.5-.25A.75.75 0 017.25 7h1a.75.75 0 01.75.75v2.75h.25a.75.75 0 010 1.5h-2a.75.75 0 010-1.5h.25v-2h-.25a.75.75 0 01-.75-.75zM8 6a1 1 0 100-2 1 1 0 000 2z"></path></svg>
+    <strong>Note: </strong>As we can see that the time for performing the increment operation has gone up substantially when we would have expected it take half the time. 
+</div></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><div class="flash flash-warn">
+    <svg class="octicon octicon-zap octicon octicon-zap" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10.561 1.5a.016.016 0 00-.01.004L3.286 8.571A.25.25 0 003.462 9H6.75a.75.75 0 01.694 1.034l-1.713 4.188 6.982-6.793A.25.25 0 0012.538 7H9.25a.75.75 0 01-.683-1.06l2.008-4.418.003-.006a.02.02 0 00-.004-.009.02.02 0 00-.006-.006L10.56 1.5zM9.504.43a1.516 1.516 0 012.437 1.713L10.415 5.5h2.123c1.57 0 2.346 1.909 1.22 3.004l-7.34 7.142a1.25 1.25 0 01-.871.354h-.302a1.25 1.25 0 01-1.157-1.723L5.633 10.5H3.462c-1.57 0-2.346-1.909-1.22-3.004L9.503.429z"></path></svg>
+    <strong>Important: </strong>In the rest of the blog we will take in a very usual scenario we see in streaming request processing.
+</div>
+A client sends in requests to a server in a streaming fashion. The server at its end needs to process the client's request, it may have multiple stages of processing. For example, imagine the client sends in a stream of requests and the server in JSON format. Now the probable first task that the client needs to perform is to parse the JSON request.Imagine a thread being assigned to do this parsing task. It parses requests one after another and hands over the parsed request in some form to another thread which may be responsible for performing business logic for that client. Usually the data structure to manage this message passing and flow control in screaming scenario is handled by a queue data structure. The producer threads (parser thread) puts in parsed data in this queue, from which the consumer thread (the business logic thread) will read of the parsed data. Because we have two threads working concurrently on a single data structure (the queue) we can expect contention to kick in.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="WHY-QUEUES-ARE-FLAWED">WHY QUEUES ARE FLAWED<a class="anchor-link" href="#WHY-QUEUES-ARE-FLAWED"> </a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The queue could be an obvious choice for handling data communication between multiple threads, but the queue data structure is fundamentally flawed for communication between multiple threads. Imagine the case of the first two threads of the a system using a queue for data communication, the listener thread and the parsing thread. The listener thread listens to bytes from the wire and puts it in a queue and the parser thread will pick up bytes from the queue and parse it. Typically, a queue data structure will have a head field, a tail field and a size field (to tell an empty queue from a full one). The head field will be modified by the parser thread and the tail field by the parser thread. The size field though will be modified by both of the threads and it effectively makes the queue data structure having two writers.</p>
+<p><img src="/cs_craftmanship/images/copied_from_nb/my_icons/queue.png" alt="" />
+Moreover, the entire data structure will fall in the same cache line and hence when say the listener thread modifies the tail field, the head field in another core also gets invalidated and needs to be fetched from a level 2 cache.
+<img src="/cs_craftmanship/images/copied_from_nb/my_icons/false_sharing.png" alt="" /></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="CAN-WE-AVOID-LOCKS-?">CAN WE AVOID LOCKS ?<a class="anchor-link" href="#CAN-WE-AVOID-LOCKS-?"> </a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>So, using a queue structure for inter-thread communication with expensive locks could cost a lot of performance for any system. Hence, we move towards a better data structure that solves the issues of synchronization among threads.
+The data structure we use doesn't use locks.
+The main components of the data structure are -
+A. A circular buffer
+B. A sequence number field which has a number indicating a specific slot in the circular buffer.
+C. Each of the worker threads have their own sequence number.
+The circular buffer is written to by the producers . The producer in each case updates the sequence number for each of the circular buffers. The worker threads (consumer thread) have their own sequence number indicating the slots they have consumed so far from the circular buffer.
+<img src="/cs_craftmanship/images/copied_from_nb/my_icons/lock_free_ds.png" alt="" /></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><div class="flash">
+    <svg class="octicon octicon-info octicon octicon-info octicon octicon-info octicon octicon-info octicon octicon-info" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm6.5-.25A.75.75 0 017.25 7h1a.75.75 0 01.75.75v2.75h.25a.75.75 0 010 1.5h-2a.75.75 0 010-1.5h.25v-2h-.25a.75.75 0 01-.75-.75zM8 6a1 1 0 100-2 1 1 0 000 2z"></path></svg>
+    <strong>Note: </strong>In the design, each of the elements has a SINGLE WRITER. The producer threads of the circular ring write to the ring buffer, and its sequence number. The worker consumer threads will write their own local sequence number. No field or data have more than one writer in this data structure.
+</div></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="WRITE-OPERATION-ON-THE-LOCK-FREE-DATA-STRUCTURE">WRITE OPERATION ON THE LOCK-FREE DATA STRUCTURE<a class="anchor-link" href="#WRITE-OPERATION-ON-THE-LOCK-FREE-DATA-STRUCTURE"> </a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Before writing a slot in the circular buffer, the thread has to make sure that it doesn't overwrite old bytes that have not yet been processed by the consumer thread. The consumer thread also maintains a sequence number, this number indicates the slots that have been already processed. So the producer thread before writing grabs the circular buffer's sequence number, adds one to it (mod size of the circular buffer) to get the next eligible slot for writing. But before putting in the bytes in that slot it checks with the dependent consumer thread (by reading their local sequence number) if they have processed this slot. If say the consumer has not yet processed this slot, then the producer thread goes in a busy wait till the slot is available to write to. When the slot is overwritten then the circular buffer's sequence number is updated by the producer thread. This indicates to consumer threads that they have a new slot to consume.
+<img src="/cs_craftmanship/images/copied_from_nb/my_icons/writing1.png" alt="" /></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Writing to the circular buffers is a 2-phase commit. In the first phase, we check out a slot from the circular buffer. We can only check out a slot if it has already been consumed. This is ensured by following the logic mentioned above. Once the slot is checked out the producer writes the next byte to it. Then it sends a commit message to commit the entry by updating the circular buffer's sequence number to its next logical value(+1 mod size of the circular buffer)
+<img src="/cs_craftmanship/images/copied_from_nb/my_icons/writing2.png" alt="" /></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="READ-OPERATION-ON-THE-LOCK_FREE-DATA-STRUCTURE">READ OPERATION ON THE LOCK_FREE DATA STRUCTURE<a class="anchor-link" href="#READ-OPERATION-ON-THE-LOCK_FREE-DATA-STRUCTURE"> </a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The consumer thread reads the slots from circular buffer -1. Before reading the next slot, it checks (read) the buffer's sequence number. This number is indicative of the slots till which the buffer can read.
+<img src="/cs_craftmanship/images/copied_from_nb/my_icons/reading.png" alt="" /></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="ENSURING-THAT-THE-READS-HAPPEN-IN-PROGRAM-ORDER">ENSURING THAT THE READS HAPPEN IN PROGRAM ORDER<a class="anchor-link" href="#ENSURING-THAT-THE-READS-HAPPEN-IN-PROGRAM-ORDER"> </a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>There is just one piece of detail that needs to be addressed for the above data structure to work. Compilers and CPU take the liberty to reorder independent instructions for optimizations. This doesn’t have any issues in the single process case where the program’s logic integrity is maintained. But this could logic breakdown in case of multiple threads.
+Imagine a typical simplified read/write to the circular buffer described above—
+Say the publisher thread’s sequence of operation is indicated in black, and the consumer thread’s in brown. The publisher checks in a slot and it updates the sequence number. Then the consumer thread reads the (wrong) sequence number of the buffer and goes on to access the slot which is yet to be written.
+<img src="/cs_craftmanship/images/copied_from_nb/my_icons/ordering1.png" alt="" /></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The way we could solve this is by putting memory fences around the variables which tells the compiler and CPU to not reorder reads / writes before and after those shared variables. In that way programs logic integrity is maintained.
+<img src="/cs_craftmanship/images/copied_from_nb/my_icons/memory_fence.png" alt="" /></p>
+
+</div>
+</div>
+</div>
+</div>
+
+
+
+  </div><a class="u-url" href="/cs_craftmanship/2021/01/04/Lock-free-data-structures.html" hidden></a>
+</article>
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/cs_craftmanship/"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+        <p class="feed-subscribe">
+          <a href="/cs_craftmanship/feed.xml">
+            <svg class="svg-icon orange">
+              <use xlink:href="/cs_craftmanship/assets/minima-social-icons.svg#rss"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p>
+      </div>
+      <div class="footer-col">
+        <p>Computer Science Blog By Abhishek Singh.</p>
+      </div>
+    </div>
+
+    <div class="social-links"><ul class="social-media-list"></ul>
+</div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
