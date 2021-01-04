@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="twitter:card" content="summary_large_image" /><!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Blazingly fast and simple JSON Parser – O( n ) Time and O( 1 ) Space | Computer Science Craftmanship</title>
+<meta name="generator" content="Jekyll v4.1.1" />
+<meta property="og:title" content="Blazingly fast and simple JSON Parser – O( n ) Time and O( 1 ) Space" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In this section we will delve into a very clever and efficient parsing algorithm for JSON data.The main idea of the parser is to scan through JSON string linearly and maintain a set of states which would indicate the beginning,end,type of various JSON objects without allocating any extra space" />
+<meta property="og:description" content="In this section we will delve into a very clever and efficient parsing algorithm for JSON data.The main idea of the parser is to scan through JSON string linearly and maintain a set of states which would indicate the beginning,end,type of various JSON objects without allocating any extra space" />
+<link rel="canonical" href="https://abhisheksingh210193.github.io/cs_craftmanship/2021/01/04/Super-fast-JSON-parser.html" />
+<meta property="og:url" content="https://abhisheksingh210193.github.io/cs_craftmanship/2021/01/04/Super-fast-JSON-parser.html" />
+<meta property="og:site_name" content="Computer Science Craftmanship" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2021-01-04T00:00:00-06:00" />
+<script type="application/ld+json">
+{"description":"In this section we will delve into a very clever and efficient parsing algorithm for JSON data.The main idea of the parser is to scan through JSON string linearly and maintain a set of states which would indicate the beginning,end,type of various JSON objects without allocating any extra space","url":"https://abhisheksingh210193.github.io/cs_craftmanship/2021/01/04/Super-fast-JSON-parser.html","@type":"BlogPosting","headline":"Blazingly fast and simple JSON Parser – O( n ) Time and O( 1 ) Space","dateModified":"2021-01-04T00:00:00-06:00","datePublished":"2021-01-04T00:00:00-06:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://abhisheksingh210193.github.io/cs_craftmanship/2021/01/04/Super-fast-JSON-parser.html"},"@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/cs_craftmanship/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="https://abhisheksingh210193.github.io/cs_craftmanship/feed.xml" title="Computer Science Craftmanship" /><link rel="shortcut icon" type="image/x-icon" href="/cs_craftmanship/images/favicon.ico"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Primer/15.2.0/primer.css" integrity="sha512-xTz2ys4coGAOz8vuV1NcQBkgVmKhsSEtjbqyMJbBHRplFuvKIUo6xhLHpAyPt9mfR6twHJgn9OgVLuqOvjeBhg==" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" integrity="sha512-1PKOgIY59xJ8Co8+NE6FZ+LOAZKjy+KY8iq0G4B3CyeY6wYHN3yt9PW0XpSriVlkMXe40PTKnXrLnZ9+fkDaog==" crossorigin="anonymous" />
+
+<script>
+function wrap_img(fn) {
+    if (document.attachEvent ? document.readyState === "complete" : document.readyState !== "loading") {
+        var elements = document.querySelectorAll(".post img");
+        Array.prototype.forEach.call(elements, function(el, i) {
+            if (el.getAttribute("title") && (el.className != "emoji")) {
+                const caption = document.createElement('figcaption');
+                var node = document.createTextNode(el.getAttribute("title"));
+                caption.appendChild(node);
+                const wrapper = document.createElement('figure');
+                wrapper.className = 'image';
+                el.parentNode.insertBefore(wrapper, el);
+                el.parentNode.removeChild(el);
+                wrapper.appendChild(el);
+                wrapper.appendChild(caption);
+            }
+        });
+    } else { document.addEventListener('DOMContentLoaded', fn); }
+}
+window.onload = wrap_img;
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function(){
+    // add link icon to anchor tags
+    var elem = document.querySelectorAll(".anchor-link")
+    elem.forEach(e => (e.innerHTML = '<i class="fas fa-link fa-xs"></i>'));
+    });
+</script>
+</head>
+<body><header class="site-header">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/cs_craftmanship/">Computer Science Craftmanship</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/cs_craftmanship/about/">About Me</a><a class="page-link" href="/cs_craftmanship/search/">Search</a><a class="page-link" href="/cs_craftmanship/categories/">Tags</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Blazingly fast and simple JSON Parser -- O( n ) Time and O( 1 ) Space</h1><p class="page-description">In this section we will delve into a very clever and efficient parsing algorithm for JSON data.The main idea of the parser is to scan through JSON string linearly and maintain a set of states which would indicate the beginning,end,type of various JSON objects without allocating any extra space</p><p class="post-meta post-meta-title"><time class="dt-published" datetime="2021-01-04T00:00:00-06:00" itemprop="datePublished">
+        Jan 4, 2021
+      </time>
+       • <span class="read-time" title="Estimated read time">
+    
+    
+      5 min read
+    
+</span></p>
+
+    
+
+    
+      
+        <div class="pb-5 d-flex flex-wrap flex-justify-end">
+          <div class="px-2">
+
+    <a href="https://github.com/abhishekSingh210193/cs_craftmanship/tree/master/_notebooks/2021-01-04-Super-fast-JSON-parser.ipynb" role="button" target="_blank">
+<img class="notebook-badge-image" src="/cs_craftmanship/assets/badges/github.svg" alt="View On GitHub">
+    </a>
+</div>
+
+          <div class="px-2">
+    <a href="https://mybinder.org/v2/gh/abhishekSingh210193/cs_craftmanship/master?filepath=_notebooks%2F2021-01-04-Super-fast-JSON-parser.ipynb" target="_blank">
+        <img class="notebook-badge-image" src="/cs_craftmanship/assets/badges/binder.svg" alt="Open In Binder"/>
+    </a>
+</div>
+
+          <div class="px-2">
+    <a href="https://colab.research.google.com/github/abhishekSingh210193/cs_craftmanship/blob/master/_notebooks/2021-01-04-Super-fast-JSON-parser.ipynb" target="_blank">
+        <img class="notebook-badge-image" src="/cs_craftmanship/assets/badges/colab.svg" alt="Open In Colab"/>
+    </a>
+</div>
+        </div>
+      </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <!--
+#################################################
+### THIS FILE WAS AUTOGENERATED! DO NOT EDIT! ###
+#################################################
+# file to edit: _notebooks/2021-01-04-Super-fast-JSON-parser.ipynb
+-->
+
+<div class="container" id="notebook-container">
+        
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><div class="flash">
+    <svg class="octicon octicon-info octicon octicon-info octicon octicon-info" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm6.5-.25A.75.75 0 017.25 7h1a.75.75 0 01.75.75v2.75h.25a.75.75 0 010 1.5h-2a.75.75 0 010-1.5h.25v-2h-.25a.75.75 0 01-.75-.75zM8 6a1 1 0 100-2 1 1 0 000 2z"></path></svg>
+    <strong>Note: </strong>The usage and the implementation of the parser is available <a href="https://github.com/zserge/jsmn">here</a> . This blog intends to give a quick sense of how this parser works and see why it works so blazingly fast. We will also look at ways in which we can extend this parser for the case where we receive the JSON data bytes in streaming fashion and not all at once.It will be interesting to see how much of an impact that will have on the performance of the algorithm.
+</div></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><div class="flash flash-success">
+    <svg class="octicon octicon-checklist octicon octicon-checklist" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.75a.25.25 0 01.25-.25h8.5a.25.25 0 01.25.25v7.736a.75.75 0 101.5 0V1.75A1.75 1.75 0 0011.25 0h-8.5A1.75 1.75 0 001 1.75v11.5c0 .966.784 1.75 1.75 1.75h3.17a.75.75 0 000-1.5H2.75a.25.25 0 01-.25-.25V1.75zM4.75 4a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-4.5zM4 7.75A.75.75 0 014.75 7h2a.75.75 0 010 1.5h-2A.75.75 0 014 7.75zm11.774 3.537a.75.75 0 00-1.048-1.074L10.7 14.145 9.281 12.72a.75.75 0 00-1.062 1.058l1.943 1.95a.75.75 0 001.055.008l4.557-4.45z"></path></svg>
+    <strong>Tip: </strong>One of the main overheads for higly performant JSON request processing servers is parsing the JSON.Usually,parsers allocates a DOM object and then after parsing the JSON returns the entire tree for the server to query on the keys and get relevant values.But for servers where speed of processing the JSON requests is critical, even the allocating space for the DOM object every time a JSON request comes in to be serviced can bring down the performance of the server.The time spent in parsing the JSON requests is going to be always an overhead and hence it is good to have linear time and constant space parsers which in <em>normal</em> circumstances would not require any amount of memory allocation.
+</div></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Example-JSON-string-for-running-through-the-algorithm">Example JSON string for running through the algorithm<a class="anchor-link" href="#Example-JSON-string-for-running-through-the-algorithm"> </a></h2><p>We will be running an example through our algorithm and we choose a JSON string for the same --</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">JSON_STRN</span><span class="o">=</span><span class="s2">&quot;{&#39;key1&#39; : &quot;</span><span class="n">str_val1</span><span class="s2">&quot;,&#39;key2&#39;:{&#39;key21&#39;: num_val,&#39;key22&#39;: primitive_val} ,&#39;key3&#39; : [&quot;</span><span class="n">str_val31</span><span class="s2">&quot;,&quot;</span><span class="n">str_val32</span><span class="s2">&quot;]}&quot;</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><div class="flash flash-warn">
+    <svg class="octicon octicon-zap octicon octicon-zap" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10.561 1.5a.016.016 0 00-.01.004L3.286 8.571A.25.25 0 003.462 9H6.75a.75.75 0 01.694 1.034l-1.713 4.188 6.982-6.793A.25.25 0 0012.538 7H9.25a.75.75 0 01-.683-1.06l2.008-4.418.003-.006a.02.02 0 00-.004-.009.02.02 0 00-.006-.006L10.56 1.5zM9.504.43a1.516 1.516 0 012.437 1.713L10.415 5.5h2.123c1.57 0 2.346 1.909 1.22 3.004l-7.34 7.142a1.25 1.25 0 01-.871.354h-.302a1.25 1.25 0 01-1.157-1.723L5.633 10.5H3.462c-1.57 0-2.346-1.909-1.22-3.004L9.503.429z"></path></svg>
+    <strong>Important: </strong>JSON has only a limited number of types it supports. JSON supports object type,string type, array type and primitive types. Primitive types include numbers, boolean(true/false) and NULL values. To see how we can build a JSON object using the above types refer to this <a href="https://www.json.org/json-en.html">resource</a>
+</div></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Data-structure-for-parsing">Data structure for parsing<a class="anchor-link" href="#Data-structure-for-parsing"> </a></h2><p>The goal of the parsing algorithm is to fill in an array of tokens as it scrolls through the JSON request. Each JSON component be it objects,arrays,strings,or primitive types is considered to be a token, and in this array we hold a few information about each of these tokens and <em>sub-tokens</em>. A picture might help to clearly see what this algorithm intends to do.</p>
+<p><img src="/cs_craftmanship/images/copied_from_nb/my_icons/jsmn_parser.jpg" alt="" /></p>
+<p>The highlighted segments in the JSON string is a token.A token in itself can contain sub-tokens(arrays and objects).</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Each token in the arrays of token holds the following information</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+
+<span class="k">class</span> <span class="nc">JSON_type</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">JSON_UNDEFINED</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">JSON_OBJECT</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">JSON_ARRAY</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">JSON_STRING</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">JSON_PRIMITIVE</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="k">class</span> <span class="nc">JSON_token</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">tok_type</span><span class="p">:</span> <span class="n">JSON_type</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">start</span> <span class="c1">#the position in the JSON string where this token starts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop</span> <span class="o">=</span> <span class="n">stop</span>   <span class="c1">#the position in the JSON string where this token ends</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span>   <span class="c1">#the number of sub-tokens within this token</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span> <span class="c1">#if this is a sub-token, what&#39;s the index of the its parent token</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tok_type</span> <span class="o">=</span> <span class="n">tok_type</span> <span class="c1">#what the type of the token</span>
+        
+<span class="c1">#allocating an array of tokens</span>
+<span class="n">max_possible_tokens</span> <span class="o">=</span> <span class="mi">128</span>
+<span class="n">token_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">JSON_token</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_possible_tokens</span><span class="p">)]</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Parsing-Algorithm">Parsing Algorithm<a class="anchor-link" href="#Parsing-Algorithm"> </a></h2><p>Here we have go to traverse down the JSON string and then based on each character update the list of token objects. The parser is robustly written to take care of all the corner cases issues etc. Here I just identify the cases and add comments as to what each case should handle.</p>
+
+</div>
+</div>
+</div>
+    
+    
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+<span class="k">def</span> <span class="nf">parser</span><span class="p">(</span><span class="n">tokens_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">JSON_token</span><span class="p">],</span> <span class="n">json</span><span class="p">:</span><span class="nb">str</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span><span class="n">element</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">json</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">element</span> <span class="o">==</span> <span class="s1">&#39;{&#39;</span> <span class="ow">or</span> <span class="s1">&#39;]&#39;</span><span class="p">:</span>
+            <span class="kc">None</span>
+            <span class="c1">#get the next availble token slot from tokens_list, if not available allocate more</span>
+            <span class="c1">#mark the token slot with appropriate type </span>
+            <span class="c1">#mark start as idx</span>
+            <span class="c1">#mark a parent variable to indicate this is going to be the parent token for the upcoming tokens</span>
+        <span class="k">elif</span> <span class="n">element</span> <span class="o">==</span> <span class="s1">&#39;}&#39;</span> <span class="ow">or</span> <span class="s1">&#39;]&#39;</span><span class="p">:</span>
+            <span class="kc">None</span>
+            <span class="c1">#go back in the tokens array and search for the parent token for this closure</span>
+            <span class="c1">#the above can be idenfied by start != -1 and end == -1</span>
+            <span class="c1">#fill the end the end value for this token marking end as idx</span>
+            <span class="c1">#reset the parent varibale appropriately</span>
+        <span class="k">elif</span> <span class="n">element</span> <span class="o">==</span> <span class="s1">&#39;:&#39;</span><span class="p">:</span>
+            <span class="kc">None</span>
+            <span class="c1">#here it is an idication a value is coming up next, so mark the previous token slot </span>
+            <span class="c1">#as the parent of thie upcoming onr</span>
+        <span class="k">elif</span> <span class="n">element</span> <span class="o">==</span> <span class="s1">&#39;,&#39;</span><span class="p">:</span>
+            <span class="kc">None</span>
+            <span class="c1">#here it is an indication of end of a key value pair and we will move to the next key:value pair</span>
+            <span class="c1">#update parent token field in precending string</span>
+        <span class="k">elif</span> <span class="n">element</span> <span class="o">==</span> <span class="s1">&#39;</span><span class="se">\&quot;</span><span class="s1">&#39;</span><span class="p">:</span>
+            <span class="kc">None</span>
+            <span class="c1">#here it&#39;s an indication of string so just traverse the string and fill in the values</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kc">None</span>
+            <span class="c1">#here it&#39;s an indication of a primitve type so just traverse till the end of the type and fill in the values</span>
+            
+            
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+    
+
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><div class="flash flash-error">
+    <svg class="octicon octicon-alert octicon octicon-alert" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8.22 1.754a.25.25 0 00-.44 0L1.698 13.132a.25.25 0 00.22.368h12.164a.25.25 0 00.22-.368L8.22 1.754zm-1.763-.707c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z"></path></svg>
+    <strong>Warning: </strong>When we see one obvious limitation comes to mind - we have to know the number of tokens upfront for the JSON requests. This may not always be possible to guess. But again, there are a lot of services which limit the size of JSON request size and that size can be used to heuristically decide upon the size of the token arrays.
+</div></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>In any case to deal with the above possible limitation and also for request that come as a streaming request, i.e. not all the bytes are available to process the JSON request, we can modify the above algorithm to cover those cases as well, but we will have to pay with an increased time complexity for the same.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Stream-Parsing">Stream Parsing<a class="anchor-link" href="#Stream-Parsing"> </a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Image a scenario where the client and the servers talk to each other via tcp protocol and the server has no control or knowledge of the buffer size at the client's end. This means that depending upon the difference in the sizes of the buffers, the full JSON request may not land up at the server's end. So we need a mechanism to be able to hold on to the relevant tokens that still may get its value filled at the arrival of a later batch of bytes. This will also deal with the issue of having to know the maximum number of tokens upfront. Again we can first imagine it visually and then have a look at how we can do it in code.</p>
+
+</div>
+</div>
+</div>
+</div>
+
+
+
+  </div><a class="u-url" href="/cs_craftmanship/2021/01/04/Super-fast-JSON-parser.html" hidden></a>
+</article>
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/cs_craftmanship/"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+        <p class="feed-subscribe">
+          <a href="/cs_craftmanship/feed.xml">
+            <svg class="svg-icon orange">
+              <use xlink:href="/cs_craftmanship/assets/minima-social-icons.svg#rss"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p>
+      </div>
+      <div class="footer-col">
+        <p>Computer Science Blog By Abhishek Singh.</p>
+      </div>
+    </div>
+
+    <div class="social-links"><ul class="social-media-list"></ul>
+</div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
