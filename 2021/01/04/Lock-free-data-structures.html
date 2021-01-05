@@ -287,9 +287,9 @@ A client sends in requests to a server in a streaming fashion. The server at its
 <div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>The queue could be an obvious choice for handling data communication between multiple threads, but the queue data structure is fundamentally flawed for communication between multiple threads. Imagine the case of the first two threads of the a system using a queue for data communication, the listener thread and the parsing thread. The listener thread listens to bytes from the wire and puts it in a queue and the parser thread will pick up bytes from the queue and parse it. Typically, a queue data structure will have a head field, a tail field and a size field (to tell an empty queue from a full one). The head field will be modified by the parser thread and the tail field by the parser thread. The size field though will be modified by both of the threads and it effectively makes the queue data structure having two writers.</p>
-<p><img src="/cs_craftsmanship/images/copied_from_nb/my_icons/queue.png" alt="" />
+<p><img src="&quot;/cs_craftsmanship&quot;/images/copied_from_nb/my_icons/queue.png" alt="" />
 Moreover, the entire data structure will fall in the same cache line and hence when say the listener thread modifies the tail field, the head field in another core also gets invalidated and needs to be fetched from a level 2 cache.
-<img src="/cs_craftsmanship/images/copied_from_nb/my_icons/false_sharing.png" alt="" /></p>
+<img src="&quot;/cs_craftsmanship&quot;/images/copied_from_nb/my_icons/false_sharing.png" alt="" /></p>
 
 </div>
 </div>
@@ -309,7 +309,7 @@ A. A circular buffer
 B. A sequence number field which has a number indicating a specific slot in the circular buffer.
 C. Each of the worker threads have their own sequence number.
 The circular buffer is written to by the producers . The producer in each case updates the sequence number for each of the circular buffers. The worker threads (consumer thread) have their own sequence number indicating the slots they have consumed so far from the circular buffer.
-<img src="/cs_craftsmanship/images/copied_from_nb/my_icons/lock_free_ds.png" alt="" /></p>
+<img src="&quot;/cs_craftsmanship&quot;/images/copied_from_nb/my_icons/lock_free_ds.png" alt="" /></p>
 
 </div>
 </div>
@@ -333,7 +333,7 @@ The circular buffer is written to by the producers . The producer in each case u
 <div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Before writing a slot in the circular buffer, the thread has to make sure that it doesn't overwrite old bytes that have not yet been processed by the consumer thread. The consumer thread also maintains a sequence number, this number indicates the slots that have been already processed. So the producer thread before writing grabs the circular buffer's sequence number, adds one to it (mod size of the circular buffer) to get the next eligible slot for writing. But before putting in the bytes in that slot it checks with the dependent consumer thread (by reading their local sequence number) if they have processed this slot. If say the consumer has not yet processed this slot, then the producer thread goes in a busy wait till the slot is available to write to. When the slot is overwritten then the circular buffer's sequence number is updated by the producer thread. This indicates to consumer threads that they have a new slot to consume.
-<img src="/cs_craftsmanship/images/copied_from_nb/my_icons/writing1.png" alt="" /></p>
+<img src="&quot;/cs_craftsmanship&quot;/images/copied_from_nb/my_icons/writing1.png" alt="" /></p>
 
 </div>
 </div>
@@ -341,7 +341,7 @@ The circular buffer is written to by the producers . The producer in each case u
 <div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Writing to the circular buffers is a 2-phase commit. In the first phase, we check out a slot from the circular buffer. We can only check out a slot if it has already been consumed. This is ensured by following the logic mentioned above. Once the slot is checked out the producer writes the next byte to it. Then it sends a commit message to commit the entry by updating the circular buffer's sequence number to its next logical value(+1 mod size of the circular buffer)
-<img src="/cs_craftsmanship/images/copied_from_nb/my_icons/writing2.png" alt="" /></p>
+<img src="&quot;/cs_craftsmanship&quot;/images/copied_from_nb/my_icons/writing2.png" alt="" /></p>
 
 </div>
 </div>
@@ -355,7 +355,7 @@ The circular buffer is written to by the producers . The producer in each case u
 <div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>The consumer thread reads the slots from circular buffer -1. Before reading the next slot, it checks (read) the buffer's sequence number. This number is indicative of the slots till which the buffer can read.
-<img src="/cs_craftsmanship/images/copied_from_nb/my_icons/reading.png" alt="" /></p>
+<img src="&quot;/cs_craftsmanship&quot;/images/copied_from_nb/my_icons/reading.png" alt="" /></p>
 
 </div>
 </div>
@@ -371,7 +371,7 @@ The circular buffer is written to by the producers . The producer in each case u
 <p>There is just one piece of detail that needs to be addressed for the above data structure to work. Compilers and CPU take the liberty to reorder independent instructions for optimizations. This doesn’t have any issues in the single process case where the program’s logic integrity is maintained. But this could logic breakdown in case of multiple threads.
 Imagine a typical simplified read/write to the circular buffer described above—
 Say the publisher thread’s sequence of operation is indicated in black, and the consumer thread’s in brown. The publisher checks in a slot and it updates the sequence number. Then the consumer thread reads the (wrong) sequence number of the buffer and goes on to access the slot which is yet to be written.
-<img src="/cs_craftsmanship/images/copied_from_nb/my_icons/ordering1.png" alt="" /></p>
+<img src="&quot;/cs_craftsmanship&quot;/images/copied_from_nb/my_icons/ordering1.png" alt="" /></p>
 
 </div>
 </div>
@@ -379,7 +379,7 @@ Say the publisher thread’s sequence of operation is indicated in black, and th
 <div class="cell border-box-sizing text_cell rendered"><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>The way we could solve this is by putting memory fences around the variables which tells the compiler and CPU to not reorder reads / writes before and after those shared variables. In that way programs logic integrity is maintained.
-<img src="/cs_craftsmanship/images/copied_from_nb/my_icons/memory_fence.png" alt="" /></p>
+<img src="&quot;/cs_craftsmanship&quot;/images/copied_from_nb/my_icons/memory_fence.png" alt="" /></p>
 
 </div>
 </div>
