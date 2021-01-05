@@ -10,7 +10,7 @@ title: Computer Science Craftsmanship
 description: Hits in Computer Science By Abhishek Singh.
 github_username: abhishekSingh210193
 # you can comment the below line out if your repo name is not different than your baseurl
-github_repo: "cs_craftmanship"
+github_repo: "cs_craftsmanship"
 
 # OPTIONAL: override baseurl and url if using a custom domain
 # Note: leave out the trailing / from this value. 
